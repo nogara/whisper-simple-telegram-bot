@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "whisper-simple-bot"
+version = "0.1.0"
+description = ""
+authors = ["nogara <nogara@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+openai = "^1.16.2"
+logging = "^0.4.9.6"
+python-telegram-bot = "^21.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
