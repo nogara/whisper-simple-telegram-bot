@@ -10,19 +10,14 @@ import openai_utils
 import telegram
 from telegram import (
     Update,
-    User,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
     BotCommand
 )
 from telegram.ext import (
     Application,
     ApplicationBuilder,
     CallbackContext,
-    ContextTypes,
     CommandHandler,
     MessageHandler,
-    CallbackQueryHandler,
     filters
 )
 from telegram.constants import ParseMode, ChatAction
@@ -30,6 +25,17 @@ from telegram.constants import ParseMode, ChatAction
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
 logger = logging.getLogger(__name__)
+
+# check if environment variables OPENAI_API_KEY, TELEGRAM_BOT_TOKEN and ALLOWED_TELEGRAM_USERNAMES are set
+if not os.getenv("OPENAI_API_KEY"):
+    raise ValueError("OPENAI_API_KEY environment variable is not set")
+
+if not os.getenv("TELEGRAM_BOT_TOKEN"):
+    raise ValueError("TELEGRAM_BOT_TOKEN environment variable is not set")
+
+if not os.getenv("ALLOWED_TELEGRAM_USERNAMES"):
+    raise ValueError("ALLOWED_TELEGRAM_USERNAMES environment variable is not set")
+
 
 allowed_telegram_usernames=os.getenv("ALLOWED_TELEGRAM_USERNAMES", "").split(",")
 

@@ -1,7 +1,4 @@
-import base64
-from io import BytesIO
 import logging
-import os
 
 from openai import OpenAI
 
