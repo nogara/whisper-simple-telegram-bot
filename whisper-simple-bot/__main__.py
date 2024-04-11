@@ -106,8 +106,22 @@ async def audio_handle(update: Update, context: CallbackContext):
     buf.seek(0)  # move cursor to the beginning of the buffer
 
     transcribed_text = await openai_utils.transcribe_audio(buf)
-    text = f"<b>{audio.file_name}</b> 🔊: <i>{transcribed_text}</i>"
-    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+    if len(transcribed_text) < 4096:
+        text = f"<b>{audio.file_name}</b> 🔊: <i>{transcribed_text}</i>"
+        await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+        return
+
+    # split text into multiple messages due to 4096 character limit
+    i = 0
+    for message_chunk in split_text_into_chunks(transcribed_text, 4096):
+        try:
+            i = i + 1
+            text = f"<b>{audio.file_name}</b> 🔊 ({i}): <i>{message_chunk}</i>"
+            await context.bot.send_message(update.effective_chat.id, text, parse_mode=ParseMode.HTML)
+        except telegram.error.BadRequest:
+            # answer has invalid characters, so we send it without parse_mode
+            await context.bot.send_message(update.effective_chat.id, message_chunk)
 
 
 async def error_handle(update: Update, context: CallbackContext) -> None:
