@@ -13,7 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+      - name: Create Version File
+        run: echo ${{ github.ref_name }} > VERSION
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v3

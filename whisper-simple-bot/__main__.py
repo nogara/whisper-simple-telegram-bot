@@ -47,6 +47,17 @@ def split_text_into_chunks(text, chunk_size):
     for i in range(0, len(text), chunk_size):
         yield text[i:i + chunk_size]
 
+def get_version_string():
+    # get version from version file
+    version = "unknown"
+    try:
+        with open("VERSION") as f:
+            version = f.read().strip()
+    except:
+        pass
+    return version
+
+
 async def is_bot_mentioned(update: Update, context: CallbackContext):
      try:
          message = update.message
@@ -152,9 +163,14 @@ async def error_handle(update: Update, context: CallbackContext) -> None:
 async def help_handle(update: Update, context: CallbackContext):
     await update.message.reply_text(HELP_MESSAGE, parse_mode=ParseMode.HTML)
 
+async def version_handle(update: Update, context: CallbackContext):
+    version = get_version_string()
+    await update.message.reply_text(f"Version: {version}")
+
 async def post_init(application: Application):
     await application.bot.set_my_commands([
         BotCommand("/help", "Show help message"),
+        BotCommand("/version", "Show version information"),
     ])
 
 async def unsupported_message_handle(update: Update, context: CallbackContext, message=None):
@@ -197,6 +213,7 @@ def run_bot() -> None:
         user_filter = filters.User(username=usernames) | filters.User(user_id=user_ids) | filters.Chat(chat_id=group_ids)
 
     application.add_handler(CommandHandler("help", help_handle, filters=user_filter))
+    application.add_handler(CommandHandler("version", version_handle, filters=user_filter))
 
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & user_filter, message_handle))
 
