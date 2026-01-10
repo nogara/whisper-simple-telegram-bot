@@ -13,8 +13,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Validate semver tag
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if ! [[ "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag '$TAG' is not semver (expected v?MAJOR.MINOR.PATCH)."
+            exit 1
+          fi
       - name: Create Version File
-        run: echo ${{ github.ref_name }} > VERSION
+        run: echo ${{ github.event.release.tag_name }} > VERSION
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -32,5 +39,4 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: nogara/whisper-simple-telegram-bot:${{ github.ref_name }}
-
+          tags: nogara/whisper-simple-telegram-bot:${{ github.event.release.tag_name }}
