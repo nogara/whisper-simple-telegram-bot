@@ -1,17 +1,28 @@
-[tool.poetry]
+[project]
 name = "whisper-simple-bot"
 version = "0.1.0"
 description = ""
-authors = ["nogara <nogara@gmail.com>"]
 readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+  { name = "nogara", email = "nogara@gmail.com" },
+]
+dependencies = [
+  "openai>=1.16.2,<2.0.0",
+  "logging>=0.4.9.6,<0.5.0",
+  "python-telegram-bot>=21.0.1,<22.0.0",
+  "deepgram-sdk>=3.2.6,<4.0.0",
+  "python-dotenv>=1.0.1,<2.0.0",
+  "pydub>=0.25.1,<0.26.0",
+  "yt-dlp>=2024.8.6",
+  "flask>=3.0.3,<4.0.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-openai = "^1.16.2"
-logging = "^0.4.9.6"
-python-telegram-bot = "^21.0.1"
-
+[project.optional-dependencies]
+dev = [
+  "ipykernel>=6.29.4,<7.0.0",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
