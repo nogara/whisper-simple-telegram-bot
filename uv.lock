@@ -1484,7 +1484,7 @@ wheels = [
 
 [[package]]
 name = "whisper-simple-bot"
-version = "0.1.1"
+version = "1.4.2"
 source = { editable = "." }
 dependencies = [
     { name = "deepgram-sdk" },
