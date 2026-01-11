@@ -56,22 +56,34 @@ jobs:
           lines = text.splitlines(keepends=True)
           current = None
           updated = False
+          section_re = re.compile(r"^\\s*\\[([^\\]]+)\\]\\s*(?:#.*)?$")
+          version_re = re.compile(r"^(\\s*version\\s*=\\s*)(['\\\"])([^'\\\"]+)(['\\\"])(.*)$")
           for i, line in enumerate(lines):
-            stripped = line.strip()
-            if stripped.startswith("[") and stripped.endswith("]"):
-              current = stripped[1:-1]
-            if current == target_section and stripped.startswith("version"):
-              newline = "\n" if line.endswith("\n") else ""
-              line_no_nl = line[:-1] if newline else line
-              match = re.match(r'(\\s*version\\s*=\\s*)("[^"]*")(.*)$', line_no_nl)
+            section_match = section_re.match(line)
+            if section_match:
+              current = section_match.group(1)
+              continue
+            if current == target_section:
+              match = version_re.match(line)
               if not match:
                 continue
-              lines[i] = f'{match.group(1)}"{new}"{match.group(3)}{newline}'
+              newline = "\n" if line.endswith("\n") else ""
+              lines[i] = f'{match.group(1)}{match.group(2)}{new}{match.group(4)}{match.group(5)}{newline}'
               updated = True
               break
           if not updated:
-            raise SystemExit("Version line not found in pyproject.toml")
-          path.write_text("".join(lines))
+            # Fallback: update the first version assignment if section header parsing fails.
+            text, count = re.subn(
+              r'(?m)^(\\s*version\\s*=\\s*)(["\\\'])[^"\\\']+(["\\\'])',
+              f'\\1"{new}"\\3',
+              text,
+              count=1,
+            )
+            if count == 0:
+              raise SystemExit("Version line not found in pyproject.toml")
+            path.write_text(text)
+          else:
+            path.write_text("".join(lines))
           pathlib.Path("VERSION").write_text(f"v{new}\\n")
           print(new)
           PY
