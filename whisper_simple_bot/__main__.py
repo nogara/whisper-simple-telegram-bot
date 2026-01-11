@@ -7,7 +7,7 @@ import os
 import re
 import tempfile
 
-import openai_utils
+from . import openai_utils
 
 from pydub import AudioSegment
 import yt_dlp
