@@ -56,34 +56,34 @@ jobs:
           lines = text.splitlines(keepends=True)
           current = None
           updated = False
-          section_re = re.compile(r"^\\s*\\[([^\\]]+)\\]\\s*(?:#.*)?$")
-          version_re = re.compile(r"^(\\s*version\\s*=\\s*)(['\\\"])([^'\\\"]+)(['\\\"])(.*)$")
           for i, line in enumerate(lines):
-            section_match = section_re.match(line)
-            if section_match:
-              current = section_match.group(1)
+            stripped = line.strip()
+            if stripped.startswith("[") and "]" in stripped:
+              end = stripped.find("]")
+              current = stripped[1:end]
               continue
-            if current == target_section:
-              match = version_re.match(line)
-              if not match:
-                continue
-              newline = "\n" if line.endswith("\n") else ""
-              lines[i] = f'{match.group(1)}{match.group(2)}{new}{match.group(4)}{match.group(5)}{newline}'
+            if current == target_section and line.lstrip().startswith("version"):
+              before, after = line.split("=", 1)
+              quote_pos = -1
+              quote = None
+              for q in ('"', "'"):
+                pos = after.find(q)
+                if pos != -1:
+                  quote_pos = pos
+                  quote = q
+                  break
+              if quote is None:
+                break
+              end_pos = after.find(quote, quote_pos + 1)
+              if end_pos == -1:
+                break
+              new_after = after[:quote_pos + 1] + new + after[end_pos:]
+              lines[i] = before + "=" + new_after
               updated = True
               break
           if not updated:
-            # Fallback: update the first version assignment if section header parsing fails.
-            text, count = re.subn(
-              r'(?m)^(\\s*version\\s*=\\s*)(["\\\'])[^"\\\']+(["\\\'])',
-              f'\\1"{new}"\\3',
-              text,
-              count=1,
-            )
-            if count == 0:
-              raise SystemExit("Version line not found in pyproject.toml")
-            path.write_text(text)
-          else:
-            path.write_text("".join(lines))
+            raise SystemExit("Version line not found in pyproject.toml")
+          path.write_text("".join(lines))
           pathlib.Path("VERSION").write_text(f"v{new}\\n")
           print(new)
           PY
