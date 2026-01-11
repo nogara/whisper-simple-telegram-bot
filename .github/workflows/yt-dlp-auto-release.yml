@@ -19,12 +19,46 @@ jobs:
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v3
+      - name: Read current yt-dlp version
+        id: ytdlp_before
+        run: |
+          VERSION=$(python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          data = tomllib.loads(Path("uv.lock").read_text())
+          for pkg in data.get("package", []):
+            if pkg.get("name") == "yt-dlp":
+              print(pkg.get("version", ""))
+              break
+          else:
+            raise SystemExit("yt-dlp not found in uv.lock")
+          PY
+          )
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Update yt-dlp lockfile
         run: uv lock -P yt-dlp
+      - name: Read updated yt-dlp version
+        id: ytdlp_after
+        run: |
+          VERSION=$(python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          data = tomllib.loads(Path("uv.lock").read_text())
+          for pkg in data.get("package", []):
+            if pkg.get("name") == "yt-dlp":
+              print(pkg.get("version", ""))
+              break
+          else:
+            raise SystemExit("yt-dlp not found in uv.lock")
+          PY
+          )
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Check for yt-dlp updates
         id: changes
         run: |
-          if git diff --quiet -- uv.lock; then
+          if [[ "${{ steps.ytdlp_before.outputs.version }}" == "${{ steps.ytdlp_after.outputs.version }}" ]]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
