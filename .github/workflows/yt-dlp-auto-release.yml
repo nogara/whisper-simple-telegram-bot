@@ -36,16 +36,42 @@ jobs:
           NEW_VERSION=$(python - <<'PY'
           import pathlib
           import re
+          import tomllib
 
           path = pathlib.Path("pyproject.toml")
           text = path.read_text()
-          match = re.search(r'(?m)^version\\s*=\\s*"([0-9]+\\.[0-9]+\\.[0-9]+)"\\s*$', text)
-          if not match:
+          data = tomllib.loads(text)
+          version = None
+          target_section = None
+          if data.get("project", {}).get("version"):
+            version = data["project"]["version"]
+            target_section = "project"
+          elif data.get("tool", {}).get("poetry", {}).get("version"):
+            version = data["tool"]["poetry"]["version"]
+            target_section = "tool.poetry"
+          if not version:
             raise SystemExit("Version not found in pyproject.toml")
-          major, minor, patch = map(int, match.group(1).split("."))
+          major, minor, patch = map(int, version.split("."))
           new = f"{major}.{minor}.{patch + 1}"
-          text = text[:match.start(1)] + new + text[match.end(1):]
-          path.write_text(text)
+          lines = text.splitlines(keepends=True)
+          current = None
+          updated = False
+          for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+              current = stripped[1:-1]
+            if current == target_section and stripped.startswith("version"):
+              newline = "\n" if line.endswith("\n") else ""
+              line_no_nl = line[:-1] if newline else line
+              match = re.match(r'(\\s*version\\s*=\\s*)("[^"]*")(.*)$', line_no_nl)
+              if not match:
+                continue
+              lines[i] = f'{match.group(1)}"{new}"{match.group(3)}{newline}'
+              updated = True
+              break
+          if not updated:
+            raise SystemExit("Version line not found in pyproject.toml")
+          path.write_text("".join(lines))
           pathlib.Path("VERSION").write_text(f"v{new}\\n")
           print(new)
           PY

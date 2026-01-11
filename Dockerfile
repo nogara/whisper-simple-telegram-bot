@@ -26,4 +26,4 @@ RUN uv sync --frozen --no-install-project
 COPY . /code/
 
 # Run the application
-CMD ["python", "whisper-simple-bot"]
+CMD ["python", "-m", "whisper_simple_bot"]
