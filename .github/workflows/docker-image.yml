@@ -3,9 +3,6 @@ name: Docker Image CI
 on:
   release:
     types: [published]
-  workflow_run:
-    workflows: ["Update yt-dlp and release"]
-    types: [completed]
 
 
 jobs:
@@ -13,57 +10,33 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.workflow_run.head_sha }}
-      - name: Resolve release tag
-        id: tag
-        run: |
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            TAG="${{ github.event.release.tag_name }}"
-          else
-            TAG=$(git tag --points-at "${{ github.event.workflow_run.head_sha }}" --list 'v*' | head -n1)
-          fi
-          if [[ -z "$TAG" ]]; then
-            echo "No semver tag found for this run; skipping build."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
       - name: Validate semver tag
-        if: steps.tag.outputs.tag != ''
         run: |
-          TAG="${{ steps.tag.outputs.tag }}"
+          TAG="${{ github.event.release.tag_name }}"
           if ! [[ "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
             echo "Release tag '$TAG' is not semver (expected v?MAJOR.MINOR.PATCH)."
             exit 1
           fi
       - name: Create Version File
-        if: steps.tag.outputs.tag != ''
-        run: echo ${{ steps.tag.outputs.tag }} > VERSION
+        run: echo ${{ github.event.release.tag_name }} > VERSION
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-        if: steps.tag.outputs.tag != ''
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        if: steps.tag.outputs.tag != ''
       -
         name: Login to Docker Hub
         uses: docker/login-action@v3
-        if: steps.tag.outputs.tag != ''
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Build and push
         uses: docker/build-push-action@v5
-        if: steps.tag.outputs.tag != ''
         with:
           push: true
-          tags: nogara/whisper-simple-telegram-bot:${{ steps.tag.outputs.tag }}
+          tags: nogara/whisper-simple-telegram-bot:${{ github.event.release.tag_name }}

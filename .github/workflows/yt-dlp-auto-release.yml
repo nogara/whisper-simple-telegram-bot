@@ -35,7 +35,6 @@ jobs:
         run: |
           NEW_VERSION=$(python - <<'PY'
           import pathlib
-          import re
           import subprocess
           import tomllib
 
@@ -53,11 +52,11 @@ jobs:
           latest_tag = None
           try:
             tag_list = subprocess.check_output(
-              ["git", "tag", "--list", "v*", "--sort=-version:refname"],
+              ["git", "tag", "--list", "v[0-9]*.[0-9]*.[0-9]*", "--sort=-version:refname"],
               text=True,
             ).strip().splitlines()
             for tag in tag_list:
-              if re.match(r"^v?[0-9]+\\.[0-9]+\\.[0-9]+$", tag):
+              if tag:
                 latest_tag = tag
                 break
           except Exception:
@@ -120,6 +119,7 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
           tag_name: ${{ steps.bump.outputs.tag }}
           name: ${{ steps.bump.outputs.tag }}
           generate_release_notes: true
