@@ -46,13 +46,19 @@ if not os.getenv("ALLOWED_TELEGRAM_USERNAMES"):
 
 allowed_telegram_usernames = os.getenv("ALLOWED_TELEGRAM_USERNAMES", "").split(",")
 
-chat_settings = {}  # chat_id -> {"language": "pt", "model": "whisper-1"}
+chat_settings = (
+    {}
+)  # chat_id -> {"language": "pt", "model": "whisper-1", "gpt_model": "gpt-3.5-turbo", "max_tokens": 1000, "temperature": 0.7}
 
 HELP_MESSAGE = """Commands:
 ⚪ /help – Show help
 ⚪ /version – Show version
+⚪ /show_settings – Show current settings
 ⚪ /set_language <lang> – Set transcription language (e.g., pt, en)
 ⚪ /set_model <model> – Set Whisper model (e.g., whisper-1)
+⚪ /set_gpt_model <model> – Set GPT model (e.g., gpt-3.5-turbo, gpt-4)
+⚪ /set_max_tokens <number> – Set max tokens for GPT response (e.g., 1000)
+⚪ /set_temperature <float> – Set temperature for GPT response (e.g., 0.7)
 """
 
 
@@ -102,7 +108,16 @@ async def voice_message_handle(update: Update, context: CallbackContext):
         return
 
     chat_id = update.effective_chat.id
-    settings = chat_settings.get(chat_id, {"language": "pt", "model": "whisper-1"})
+    settings = chat_settings.get(
+        chat_id,
+        {
+            "language": "pt",
+            "model": "whisper-1",
+            "gpt_model": "gpt-3.5-turbo",
+            "max_tokens": 1000,
+            "temperature": 0.7,
+        },
+    )
 
     voice = update.message.voice
     voice_file = await context.bot.get_file(voice.file_id)
@@ -127,7 +142,16 @@ async def audio_handle(update: Update, context: CallbackContext):
         return
 
     chat_id = update.effective_chat.id
-    settings = chat_settings.get(chat_id, {"language": "pt", "model": "whisper-1"})
+    settings = chat_settings.get(
+        chat_id,
+        {
+            "language": "pt",
+            "model": "whisper-1",
+            "gpt_model": "gpt-3.5-turbo",
+            "max_tokens": 1000,
+            "temperature": 0.7,
+        },
+    )
 
     audio = update.message.audio
     audio_file = await context.bot.get_file(audio.file_id)
@@ -168,7 +192,16 @@ async def video_handle(update: Update, context: CallbackContext):
         return
 
     chat_id = update.effective_chat.id
-    settings = chat_settings.get(chat_id, {"language": "pt", "model": "whisper-1"})
+    settings = chat_settings.get(
+        chat_id,
+        {
+            "language": "pt",
+            "model": "whisper-1",
+            "gpt_model": "gpt-3.5-turbo",
+            "max_tokens": 1000,
+            "temperature": 0.7,
+        },
+    )
 
     video = update.message.video
     video_file = await context.bot.get_file(video.file_id)
@@ -272,7 +305,13 @@ async def set_language_handle(update: Update, context: CallbackContext):
     if context.args:
         lang = context.args[0]
         if chat_id not in chat_settings:
-            chat_settings[chat_id] = {"language": "pt", "model": "whisper-1"}
+            chat_settings[chat_id] = {
+                "language": "pt",
+                "model": "whisper-1",
+                "gpt_model": "gpt-3.5-turbo",
+                "max_tokens": 1000,
+                "temperature": 0.7,
+            }
         chat_settings[chat_id]["language"] = lang
         await update.message.reply_text(f"Language set to {lang}")
     else:
@@ -286,11 +325,114 @@ async def set_model_handle(update: Update, context: CallbackContext):
     if context.args:
         model = context.args[0]
         if chat_id not in chat_settings:
-            chat_settings[chat_id] = {"language": "pt", "model": "whisper-1"}
+            chat_settings[chat_id] = {
+                "language": "pt",
+                "model": "whisper-1",
+                "gpt_model": "gpt-3.5-turbo",
+                "max_tokens": 1000,
+                "temperature": 0.7,
+            }
         chat_settings[chat_id]["model"] = model
         await update.message.reply_text(f"Model set to {model}")
     else:
         await update.message.reply_text("Usage: /set_model <model>")
+
+
+async def set_gpt_model_handle(update: Update, context: CallbackContext):
+    if not update.message:
+        return
+    chat_id = update.effective_chat.id
+    if context.args:
+        gpt_model = context.args[0]
+        if chat_id not in chat_settings:
+            chat_settings[chat_id] = {
+                "language": "pt",
+                "model": "whisper-1",
+                "gpt_model": "gpt-3.5-turbo",
+                "max_tokens": 1000,
+                "temperature": 0.7,
+            }
+        chat_settings[chat_id]["gpt_model"] = gpt_model
+        await update.message.reply_text(f"GPT model set to {gpt_model}")
+    else:
+        await update.message.reply_text("Usage: /set_gpt_model <model>")
+
+
+async def set_max_tokens_handle(update: Update, context: CallbackContext):
+    if not update.message:
+        return
+    chat_id = update.effective_chat.id
+    if context.args:
+        try:
+            max_tokens = int(context.args[0])
+            if chat_id not in chat_settings:
+                chat_settings[chat_id] = {
+                    "language": "pt",
+                    "model": "whisper-1",
+                    "gpt_model": "gpt-3.5-turbo",
+                    "max_tokens": 1000,
+                    "temperature": 0.7,
+                }
+            chat_settings[chat_id]["max_tokens"] = max_tokens
+            await update.message.reply_text(f"Max tokens set to {max_tokens}")
+        except ValueError:
+            await update.message.reply_text("Usage: /set_max_tokens <number>")
+    else:
+        await update.message.reply_text("Usage: /set_max_tokens <number>")
+
+
+async def set_temperature_handle(update: Update, context: CallbackContext):
+    if not update.message:
+        return
+    chat_id = update.effective_chat.id
+    if context.args:
+        try:
+            temperature = float(context.args[0])
+            if chat_id not in chat_settings:
+                chat_settings[chat_id] = {
+                    "language": "pt",
+                    "model": "whisper-1",
+                    "gpt_model": "gpt-3.5-turbo",
+                    "max_tokens": 1000,
+                    "temperature": 0.7,
+                }
+            chat_settings[chat_id]["temperature"] = temperature
+            await update.message.reply_text(f"Temperature set to {temperature}")
+        except ValueError:
+            await update.message.reply_text("Usage: /set_temperature <float>")
+    else:
+        await update.message.reply_text("Usage: /set_temperature <float>")
+
+
+async def show_settings_handle(update: Update, context: CallbackContext):
+    if not update.message:
+        return
+    chat_id = update.effective_chat.id
+
+    # Get current settings for this chat
+    settings = chat_settings.get(
+        chat_id,
+        {
+            "language": "pt",
+            "model": "whisper-1",
+            "gpt_model": "gpt-3.5-turbo",
+            "max_tokens": 1000,
+            "temperature": 0.7,
+        },
+    )
+
+    settings_text = f"""Current settings for this chat:
+
+🎙️ **Transcription Settings:**
+• Language: {settings['language']}
+• Whisper Model: {settings['model']}
+
+🤖 **GPT Response Settings:**
+• GPT Model: {settings['gpt_model']}
+• Max Tokens: {settings['max_tokens']}
+• Temperature: {settings['temperature']}"""
+
+    await update.message.reply_text(settings_text, parse_mode=ParseMode.MARKDOWN)
 
 
 async def post_init(application: Application):
@@ -298,8 +440,12 @@ async def post_init(application: Application):
         [
             BotCommand("/help", "Show help message"),
             BotCommand("/version", "Show version information"),
+            BotCommand("/show_settings", "Show current settings"),
             BotCommand("/set_language", "Set transcription language"),
             BotCommand("/set_model", "Set Whisper model"),
+            BotCommand("/set_gpt_model", "Set GPT model"),
+            BotCommand("/set_max_tokens", "Set max tokens for GPT"),
+            BotCommand("/set_temperature", "Set temperature for GPT"),
         ]
     )
 
@@ -361,7 +507,16 @@ async def message_handle(update: Update, context: CallbackContext):
 
     chat_id = update.effective_chat.id
     text = update.message.text
-    settings = chat_settings.get(chat_id, {"language": "pt", "model": "whisper-1"})
+    settings = chat_settings.get(
+        chat_id,
+        {
+            "language": "pt",
+            "model": "whisper-1",
+            "gpt_model": "gpt-3.5-turbo",
+            "max_tokens": 1000,
+            "temperature": 0.7,
+        },
+    )
 
     # Check if replying to a bot message (likely a transcription)
     if (
@@ -378,7 +533,15 @@ async def message_handle(update: Update, context: CallbackContext):
             await update.message.reply_text(
                 "Generating response based on transcription..."
             )
-            response = await openai_utils.generate_gpt_response(transcription, text)
+            response = await openai_utils.generate_gpt_response(
+                transcription,
+                text,
+                **{
+                    k: v
+                    for k, v in settings.items()
+                    if k in ["gpt_model", "max_tokens", "temperature"]
+                },
+            )
             await update.message.reply_text(
                 f"🤖: <i>{response}</i>", parse_mode=ParseMode.HTML
             )
@@ -457,6 +620,18 @@ def run_bot() -> None:
     )
     application.add_handler(
         CommandHandler("set_model", set_model_handle, filters=user_filter)
+    )
+    application.add_handler(
+        CommandHandler("set_gpt_model", set_gpt_model_handle, filters=user_filter)
+    )
+    application.add_handler(
+        CommandHandler("set_max_tokens", set_max_tokens_handle, filters=user_filter)
+    )
+    application.add_handler(
+        CommandHandler("set_temperature", set_temperature_handle, filters=user_filter)
+    )
+    application.add_handler(
+        CommandHandler("show_settings", show_settings_handle, filters=user_filter)
     )
 
     application.add_handler(
