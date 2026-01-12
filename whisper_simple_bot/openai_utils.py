@@ -1,13 +1,22 @@
 import logging
+import os
 
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
 
+def get_openai_client():
+    """Get OpenAI client with configurable base URL."""
+    base_url = os.getenv("OPENAI_BASE_URL")
+    if base_url:
+        return OpenAI(base_url=base_url)
+    return OpenAI()
+
+
 async def transcribe_audio(audio_file, language="pt", model="whisper-1") -> str:
 
-    client = OpenAI()
+    client = get_openai_client()
 
     # check if the file is too large
     if audio_file.getbuffer().nbytes > 20_000_000:
@@ -30,11 +39,11 @@ async def transcribe_audio(audio_file, language="pt", model="whisper-1") -> str:
 async def generate_gpt_response(
     context: str,
     user_prompt: str,
-    gpt_model="gpt-3.5-turbo",
+    gpt_model="chatgpt/gpt-5.2",
     max_tokens=1000,
     temperature=0.7,
 ) -> str:
-    client = OpenAI()
+    client = get_openai_client()
 
     messages = [
         {

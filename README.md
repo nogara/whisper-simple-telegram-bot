@@ -11,6 +11,7 @@ OPENAI_API_KEY=your-openai-api-key
 TELGRAM_BOT_TOKEN=your-telegram-bot-token
 ALLOWED_TELEGRAM_USERNAMES=telegram_username1,telegram_username2
 OPENAI_BASE_URL=https://api.openai.com/v1  # Optional: custom OpenAI-compatible API endpoint
+CHAT_SETTINGS_DIR=./config  # Optional: directory to store chat settings (default: current directory)
 ```
 
 ## Commands
@@ -25,6 +26,8 @@ The bot supports the following commands:
 ⚪ /set_gpt_model <model> – Set GPT model (e.g., gpt-3.5-turbo, gpt-4)
 ⚪ /set_max_tokens <number> – Set max tokens for GPT response (e.g., 1000)
 ⚪ /set_temperature <float> – Set temperature for GPT response (e.g., 0.7)
+
+**Note:** All settings are persistent and will be remembered between bot restarts.
 
 ## Development
 
@@ -79,6 +82,7 @@ Make sure your `.env` file is in the workspace root, or set environment variable
 - `TELEGRAM_BOT_TOKEN`
 - `ALLOWED_TELEGRAM_USERNAMES`
 - `OPENAI_BASE_URL` (optional: custom OpenAI-compatible API endpoint)
+- `CHAT_SETTINGS_DIR` (optional: directory to store chat settings, default: current directory)
 
 ## Building Docker image
 

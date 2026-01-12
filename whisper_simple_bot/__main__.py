@@ -46,9 +46,34 @@ if not os.getenv("ALLOWED_TELEGRAM_USERNAMES"):
 
 allowed_telegram_usernames = os.getenv("ALLOWED_TELEGRAM_USERNAMES", "").split(",")
 
-chat_settings = (
-    {}
-)  # chat_id -> {"language": "pt", "model": "whisper-1", "gpt_model": "gpt-3.5-turbo", "max_tokens": 1000, "temperature": 0.7}
+# Configurable settings directory
+SETTINGS_DIR = os.getenv("CHAT_SETTINGS_DIR", ".")
+SETTINGS_FILE = os.path.join(SETTINGS_DIR, "chat_settings.json")
+
+
+def load_chat_settings():
+    """Load chat settings from JSON file."""
+    try:
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, "r") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading chat settings: {e}")
+    return {}
+
+
+def save_chat_settings():
+    """Save chat settings to JSON file."""
+    try:
+        # Ensure the settings directory exists
+        os.makedirs(SETTINGS_DIR, exist_ok=True)
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(chat_settings, f, indent=2)
+    except Exception as e:
+        logger.error(f"Error saving chat settings: {e}")
+
+
+chat_settings = load_chat_settings()
 
 HELP_MESSAGE = """Commands:
 ⚪ /help – Show help
@@ -313,6 +338,7 @@ async def set_language_handle(update: Update, context: CallbackContext):
                 "temperature": 0.7,
             }
         chat_settings[chat_id]["language"] = lang
+        save_chat_settings()
         await update.message.reply_text(f"Language set to {lang}")
     else:
         await update.message.reply_text("Usage: /set_language <lang>")
@@ -333,6 +359,7 @@ async def set_model_handle(update: Update, context: CallbackContext):
                 "temperature": 0.7,
             }
         chat_settings[chat_id]["model"] = model
+        save_chat_settings()
         await update.message.reply_text(f"Model set to {model}")
     else:
         await update.message.reply_text("Usage: /set_model <model>")
@@ -353,6 +380,7 @@ async def set_gpt_model_handle(update: Update, context: CallbackContext):
                 "temperature": 0.7,
             }
         chat_settings[chat_id]["gpt_model"] = gpt_model
+        save_chat_settings()
         await update.message.reply_text(f"GPT model set to {gpt_model}")
     else:
         await update.message.reply_text("Usage: /set_gpt_model <model>")
@@ -374,6 +402,7 @@ async def set_max_tokens_handle(update: Update, context: CallbackContext):
                     "temperature": 0.7,
                 }
             chat_settings[chat_id]["max_tokens"] = max_tokens
+            save_chat_settings()
             await update.message.reply_text(f"Max tokens set to {max_tokens}")
         except ValueError:
             await update.message.reply_text("Usage: /set_max_tokens <number>")
@@ -397,6 +426,7 @@ async def set_temperature_handle(update: Update, context: CallbackContext):
                     "temperature": 0.7,
                 }
             chat_settings[chat_id]["temperature"] = temperature
+            save_chat_settings()
             await update.message.reply_text(f"Temperature set to {temperature}")
         except ValueError:
             await update.message.reply_text("Usage: /set_temperature <float>")
