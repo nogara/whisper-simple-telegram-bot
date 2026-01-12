@@ -10,6 +10,7 @@ Create a `.env` file with the following content:
 OPENAI_API_KEY=your-openai-api-key
 TELGRAM_BOT_TOKEN=your-telegram-bot-token
 ALLOWED_TELEGRAM_USERNAMES=telegram_username1,telegram_username2
+OPENAI_BASE_URL=https://api.openai.com/v1  # Optional: custom OpenAI-compatible API endpoint
 ```
 
 ## Commands
@@ -77,6 +78,7 @@ Make sure your `.env` file is in the workspace root, or set environment variable
 - `OPENAI_API_KEY`
 - `TELEGRAM_BOT_TOKEN`
 - `ALLOWED_TELEGRAM_USERNAMES`
+- `OPENAI_BASE_URL` (optional: custom OpenAI-compatible API endpoint)
 
 ## Building Docker image
 
