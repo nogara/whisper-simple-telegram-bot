@@ -54,11 +54,11 @@ HELP_MESSAGE = """Commands:
 ⚪ /help – Show help
 ⚪ /version – Show version
 ⚪ /show_settings – Show current settings
-⚪ /set_language <lang> – Set transcription language (e.g., pt, en)
-⚪ /set_model <model> – Set Whisper model (e.g., whisper-1)
-⚪ /set_gpt_model <model> – Set GPT model (e.g., gpt-3.5-turbo, gpt-4)
-⚪ /set_max_tokens <number> – Set max tokens for GPT response (e.g., 1000)
-⚪ /set_temperature <float> – Set temperature for GPT response (e.g., 0.7)
+⚪ /set_language &lt;lang&gt; – Set transcription language (e.g., pt, en)
+⚪ /set_model &lt;model&gt; – Set Whisper model (e.g., whisper-1)
+⚪ /set_gpt_model &lt;model&gt; – Set GPT model (e.g., gpt-3.5-turbo, gpt-4)
+⚪ /set_max_tokens &lt;number&gt; – Set max tokens for GPT response (e.g., 1000)
+⚪ /set_temperature &lt;float&gt; – Set temperature for GPT response (e.g., 0.7)
 """
 
 
@@ -129,7 +129,7 @@ async def voice_message_handle(update: Update, context: CallbackContext):
     buf.seek(0)  # move cursor to the beginning of the buffer
 
     transcribed_text = await openai_utils.transcribe_audio(buf, **settings)
-    text = f"🎤: <i>{transcribed_text}</i>"
+    text = f"🎤: <i>{html.escape(transcribed_text)}</i>"
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
@@ -165,7 +165,7 @@ async def audio_handle(update: Update, context: CallbackContext):
     transcribed_text = await openai_utils.transcribe_audio(buf, **settings)
 
     if len(transcribed_text) < 4096:
-        text = f"<b>{audio.file_name}</b> 🔊: <i>{transcribed_text}</i>"
+        text = f"<b>{html.escape(audio.file_name)}</b> 🔊: <i>{html.escape(transcribed_text)}</i>"
         await update.message.reply_text(text, parse_mode=ParseMode.HTML)
         return
 
@@ -174,7 +174,7 @@ async def audio_handle(update: Update, context: CallbackContext):
     for message_chunk in split_text_into_chunks(transcribed_text, 4096):
         try:
             i = i + 1
-            text = f"<b>{audio.file_name}</b> 🔊 ({i}): <i>{message_chunk}</i>"
+            text = f"<b>{html.escape(audio.file_name)}</b> 🔊 ({i}): <i>{html.escape(message_chunk)}</i>"
             await context.bot.send_message(
                 update.effective_chat.id, text, parse_mode=ParseMode.HTML
             )
@@ -233,7 +233,7 @@ async def video_handle(update: Update, context: CallbackContext):
     file_name = video.file_name or "video"
 
     if len(transcribed_text) < 4096:
-        text = f"<b>{file_name}</b> 🎥: <i>{transcribed_text}</i>"
+        text = f"<b>{html.escape(file_name)}</b> 🎥: <i>{html.escape(transcribed_text)}</i>"
         await update.message.reply_text(text, parse_mode=ParseMode.HTML)
         return
 
@@ -242,7 +242,7 @@ async def video_handle(update: Update, context: CallbackContext):
     for message_chunk in split_text_into_chunks(transcribed_text, 4096):
         try:
             i = i + 1
-            text = f"<b>{file_name}</b> 🎥 ({i}): <i>{message_chunk}</i>"
+            text = f"<b>{html.escape(file_name)}</b> 🎥 ({i}): <i>{html.escape(message_chunk)}</i>"
             await context.bot.send_message(
                 update.effective_chat.id, text, parse_mode=ParseMode.HTML
             )
@@ -423,16 +423,16 @@ async def show_settings_handle(update: Update, context: CallbackContext):
 
     settings_text = f"""Current settings for this chat:
 
-🎙️ **Transcription Settings:**
-• Language: {settings['language']}
-• Whisper Model: {settings['model']}
+🎙️ <b>Transcription Settings:</b>
+• Language: {html.escape(str(settings['language']))}
+• Whisper Model: {html.escape(str(settings['model']))}
 
-🤖 **GPT Response Settings:**
-• GPT Model: {settings['gpt_model']}
-• Max Tokens: {settings['max_tokens']}
-• Temperature: {settings['temperature']}"""
+🤖 <b>GPT Response Settings:</b>
+• GPT Model: {html.escape(str(settings['gpt_model']))}
+• Max Tokens: {html.escape(str(settings['max_tokens']))}
+• Temperature: {html.escape(str(settings['temperature']))}"""
 
-    await update.message.reply_text(settings_text, parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(settings_text, parse_mode=ParseMode.HTML)
 
 
 async def post_init(application: Application):
@@ -549,7 +549,7 @@ async def message_handle(update: Update, context: CallbackContext):
                 },
             )
             await update.message.reply_text(
-                f"🤖: <i>{response}</i>", parse_mode=ParseMode.HTML
+                f"🤖: <i>{html.escape(response)}</i>", parse_mode=ParseMode.HTML
             )
             return
 
@@ -567,7 +567,7 @@ async def message_handle(update: Update, context: CallbackContext):
             )
             file_name = title or "video from URL"
             if len(transcribed_text) < 4096:
-                text_reply = f"<b>{file_name}</b> 🔗: <i>{transcribed_text}</i>"
+                text_reply = f"<b>{html.escape(file_name)}</b> 🔗: <i>{html.escape(transcribed_text)}</i>"
                 await update.message.reply_text(text_reply, parse_mode=ParseMode.HTML)
                 return
             # split text
@@ -575,7 +575,7 @@ async def message_handle(update: Update, context: CallbackContext):
             for message_chunk in split_text_into_chunks(transcribed_text, 4096):
                 try:
                     i = i + 1
-                    text_reply = f"<b>{file_name}</b> 🔗 ({i}): <i>{message_chunk}</i>"
+                    text_reply = f"<b>{html.escape(file_name)}</b> 🔗 ({i}): <i>{html.escape(message_chunk)}</i>"
                     await context.bot.send_message(
                         update.effective_chat.id, text_reply, parse_mode=ParseMode.HTML
                     )
@@ -591,7 +591,7 @@ async def message_handle(update: Update, context: CallbackContext):
         # Only echo non-reply messages
         if not update.message.reply_to_message:
             await update.message.reply_text(
-                f"📝: <i>{text}</i>", parse_mode=ParseMode.HTML
+                f"📝: <i>{html.escape(text)}</i>", parse_mode=ParseMode.HTML
             )
 
 
