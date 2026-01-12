@@ -1,0 +1,30 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Whisper Bot",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "whisper_simple_bot",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "preLaunchTask": "uv sync"
+        },
+        {
+            "name": "Debug Whisper Bot (Hot Reload)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "hupper",
+            "args": ["python", "-m", "whisper_simple_bot"],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "preLaunchTask": "uv sync --extra dev"
+        }
+    ]
+}
