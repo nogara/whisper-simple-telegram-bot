@@ -490,10 +490,13 @@ async def download_audio_from_url(url):
 
 
 def extract_transcription_from_message(message_text):
-    # Extract text between <i> and </i>
-    match = re.search(r"<i>(.*?)</i>", message_text)
+    # Extract transcription from bot messages
+    # Messages are in format: "prefix 🎤/🔊/🎥/🔗: transcription" or "prefix 🎤/🔊/🎥/🔗 (number): transcription"
+    # Find the transcription part after the emoji and colon
+    pattern = r"[\w\s\.\-\(\)]*?[🎤🔊🎥🔗]\s*:\s*(.*)"
+    match = re.search(pattern, message_text)
     if match:
-        return match.group(1)
+        return match.group(1).strip()
     return None
 
 
@@ -521,6 +524,7 @@ async def message_handle(update: Update, context: CallbackContext):
     # Check if replying to a bot message (likely a transcription)
     if (
         update.message.reply_to_message
+        and update.message.reply_to_message.from_user
         and update.message.reply_to_message.from_user.id == context.bot.id
     ):
         replied_text = (
@@ -529,7 +533,9 @@ async def message_handle(update: Update, context: CallbackContext):
             or ""
         )
         transcription = extract_transcription_from_message(replied_text)
-        if transcription:
+        if transcription and any(
+            emoji in replied_text for emoji in ["🎤", "🔊", "🎥", "🔗"]
+        ):
             await update.message.reply_text(
                 "Generating response based on transcription..."
             )
@@ -582,7 +588,11 @@ async def message_handle(update: Update, context: CallbackContext):
                 "Failed to download or extract audio from URL."
             )
     else:
-        await update.message.reply_text(f"📝: <i>{text}</i>", parse_mode=ParseMode.HTML)
+        # Only echo non-reply messages
+        if not update.message.reply_to_message:
+            await update.message.reply_text(
+                f"📝: <i>{text}</i>", parse_mode=ParseMode.HTML
+            )
 
 
 def run_bot() -> None:
