@@ -21,6 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "ipykernel>=6.29.4,<7.0.0",
+  "hupper>=1.12.1,<2.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]
