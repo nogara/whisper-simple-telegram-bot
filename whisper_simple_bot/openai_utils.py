@@ -6,9 +6,9 @@ from openai import OpenAI
 logger = logging.getLogger(__name__)
 
 
-def get_openai_client():
+def get_openai_client(use_custom_base=False):
     """Get OpenAI client with configurable base URL."""
-    base_url = os.getenv("OPENAI_BASE_URL")
+    base_url = os.getenv("OPENAI_GPT_BASE_URL") if use_custom_base else None
     if base_url:
         return OpenAI(base_url=base_url)
     return OpenAI()
@@ -16,7 +16,7 @@ def get_openai_client():
 
 async def transcribe_audio(audio_file, language="pt", model="whisper-1") -> str:
 
-    client = get_openai_client()
+    client = get_openai_client(use_custom_base=False)
 
     # check if the file is too large
     if audio_file.getbuffer().nbytes > 20_000_000:
@@ -43,7 +43,7 @@ async def generate_gpt_response(
     max_tokens=1000,
     temperature=0.7,
 ) -> str:
-    client = get_openai_client()
+    client = get_openai_client(use_custom_base=True)
 
     messages = [
         {

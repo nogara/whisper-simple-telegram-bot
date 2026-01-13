@@ -153,7 +153,9 @@ async def voice_message_handle(update: Update, context: CallbackContext):
     buf.name = "voice.oga"  # file extension is required
     buf.seek(0)  # move cursor to the beginning of the buffer
 
-    transcribed_text = await openai_utils.transcribe_audio(buf, **settings)
+    transcribed_text = await openai_utils.transcribe_audio(
+        buf, **{k: v for k, v in settings.items() if k in ["language", "model"]}
+    )
     text = f"🎤: <i>{html.escape(transcribed_text)}</i>"
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
@@ -187,7 +189,9 @@ async def audio_handle(update: Update, context: CallbackContext):
     buf.name = audio.file_name  # file extension is required
     buf.seek(0)  # move cursor to the beginning of the buffer
 
-    transcribed_text = await openai_utils.transcribe_audio(buf, **settings)
+    transcribed_text = await openai_utils.transcribe_audio(
+        buf, **{k: v for k, v in settings.items() if k in ["language", "model"]}
+    )
 
     if len(transcribed_text) < 4096:
         text = f"<b>{html.escape(audio.file_name)}</b> 🔊: <i>{html.escape(transcribed_text)}</i>"
@@ -249,7 +253,10 @@ async def video_handle(update: Update, context: CallbackContext):
         audio_buf.name = "audio.mp3"
         audio_buf.seek(0)
 
-        transcribed_text = await openai_utils.transcribe_audio(audio_buf, **settings)
+        transcribed_text = await openai_utils.transcribe_audio(
+            audio_buf,
+            **{k: v for k, v in settings.items() if k in ["language", "model"]},
+        )
     except Exception as e:
         logging.error(f"Error extracting audio from video: {e}")
         await update.message.reply_text("Error: failed to extract audio from video")
@@ -593,7 +600,8 @@ async def message_handle(update: Update, context: CallbackContext):
             audio_buf.name = "audio.mp3"
             audio_buf.seek(0)
             transcribed_text = await openai_utils.transcribe_audio(
-                audio_buf, **settings
+                audio_buf,
+                **{k: v for k, v in settings.items() if k in ["language", "model"]},
             )
             file_name = title or "video from URL"
             if len(transcribed_text) < 4096:
