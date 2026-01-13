@@ -87,6 +87,7 @@ HELP_MESSAGE = """Commands:
 ⚪ /summarize – Summarize the replied transcription
 ⚪ /bullets – Create bullet points for the replied transcription
 ⚪ /translate &lt;language&gt; – Translate the replied transcription to the specified language
+⚪ /recipe – Create a recipe based on the replied transcription
 """
 
 
@@ -486,6 +487,7 @@ async def post_init(application: Application):
             BotCommand("/set_gpt_model", "Set GPT model"),
             BotCommand("/set_max_tokens", "Set max tokens for GPT"),
             BotCommand("/set_temperature", "Set temperature for GPT"),
+            BotCommand("/recipe", "Create a recipe based on the replied transcription"),
         ]
     )
 
@@ -569,6 +571,7 @@ async def message_handle(update: Update, context: CallbackContext):
         text.startswith("/summarize")
         or text.startswith("/bullets")
         or text.startswith("/translate")
+        or text.startswith("/recipe")
     ):
         if (
             not replied
@@ -592,11 +595,14 @@ async def message_handle(update: Update, context: CallbackContext):
 
         # Build the appropriate prompt based on the command
         if text.startswith("/summarize"):
-            user_prompt = (
-                f"Summarize the following text in the same language: {transcription}"
-            )
+            user_prompt = f"Summarize the following text in the same language: {transcription}"
         elif text.startswith("/bullets"):
             user_prompt = f"Create bullet points for the following text in the same language: {transcription}"
+        elif text.startswith("/recipe"):
+            user_prompt = (
+                f"Create a recipe based on the following text in the same language: {transcription}. "
+                "Include ingredients, steps, servings and approximate times."
+            )
         else:  # /translate
             parts = text.split(" ", 1)
             if len(parts) == 2 and parts[1].strip():
