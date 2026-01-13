@@ -84,6 +84,9 @@ HELP_MESSAGE = """Commands:
 ⚪ /set_gpt_model &lt;model&gt; – Set GPT model (e.g., gpt-3.5-turbo, gpt-4)
 ⚪ /set_max_tokens &lt;number&gt; – Set max tokens for GPT response (e.g., 1000)
 ⚪ /set_temperature &lt;float&gt; – Set temperature for GPT response (e.g., 0.7)
+⚪ /summarize – Summarize the replied transcription
+⚪ /bullets – Create bullet points for the replied transcription
+⚪ /translate &lt;language&gt; – Translate the replied transcription to the specified language
 """
 
 
@@ -558,27 +561,86 @@ async def message_handle(update: Update, context: CallbackContext):
         },
     )
 
-    # Check if replying to a bot message (likely a transcription)
-    if (
-        update.message.reply_to_message
-        and update.message.reply_to_message.from_user
-        and update.message.reply_to_message.from_user.id == context.bot.id
+    # Unified handling for replies to bot transcriptions and related commands
+    replied = update.message.reply_to_message
+
+    # If the user issued a special command that requires replying to a transcription
+    if text and (
+        text.startswith("/summarize")
+        or text.startswith("/bullets")
+        or text.startswith("/translate")
     ):
-        replied_text = (
-            update.message.reply_to_message.text
-            or update.message.reply_to_message.caption
-            or ""
+        if (
+            not replied
+            or not getattr(replied, "from_user", None)
+            or replied.from_user.id != context.bot.id
+        ):
+            await update.message.reply_text(
+                "Please reply to a transcription message with this command."
+            )
+            return
+
+        replied_text = replied.text or replied.caption or ""
+        transcription = extract_transcription_from_message(replied_text)
+        if not transcription or not any(
+            emoji in replied_text for emoji in ["🎤", "🔊", "🎥", "🔗"]
+        ):
+            await update.message.reply_text(
+                "Please reply to a valid transcription message."
+            )
+            return
+
+        # Build the appropriate prompt based on the command
+        if text.startswith("/summarize"):
+            user_prompt = (
+                f"Summarize the following text in the same language: {transcription}"
+            )
+        elif text.startswith("/bullets"):
+            user_prompt = f"Create bullet points for the following text in the same language: {transcription}"
+        else:  # /translate
+            parts = text.split(" ", 1)
+            if len(parts) == 2 and parts[1].strip():
+                lang = parts[1].strip()
+                user_prompt = f"Translate the following text to {lang}, keeping the same content and format: {transcription}"
+            else:
+                await update.message.reply_text(
+                    "Please specify a language for translation, e.g., /translate en"
+                )
+                return
+
+        await update.message.reply_text("Generating response based on transcription...")
+        response = await openai_utils.generate_gpt_response(
+            transcription,
+            user_prompt,
+            **{
+                k: v
+                for k, v in settings.items()
+                if k in ["gpt_model", "max_tokens", "temperature"]
+            },
         )
+        await update.message.reply_text(
+            f"🤖: <i>{html.escape(response)}</i>", parse_mode=ParseMode.HTML
+        )
+        return
+
+    # If replying to a bot message (likely a transcription) with a free-form prompt
+    if (
+        replied
+        and getattr(replied, "from_user", None)
+        and replied.from_user.id == context.bot.id
+    ):
+        replied_text = replied.text or replied.caption or ""
         transcription = extract_transcription_from_message(replied_text)
         if transcription and any(
             emoji in replied_text for emoji in ["🎤", "🔊", "🎥", "🔗"]
         ):
+            user_prompt = text or ""
             await update.message.reply_text(
                 "Generating response based on transcription..."
             )
             response = await openai_utils.generate_gpt_response(
                 transcription,
-                text,
+                user_prompt,
                 **{
                     k: v
                     for k, v in settings.items()
@@ -628,6 +690,11 @@ async def message_handle(update: Update, context: CallbackContext):
     else:
         # Only echo non-reply messages
         if not update.message.reply_to_message:
+            if text.startswith("/"):
+                await update.message.reply_text(
+                    "Please reply to a transcription message with this command."
+                )
+                return
             await update.message.reply_text(
                 f"📝: <i>{html.escape(text)}</i>", parse_mode=ParseMode.HTML
             )
@@ -682,9 +749,7 @@ def run_bot() -> None:
         CommandHandler("show_settings", show_settings_handle, filters=user_filter)
     )
 
-    application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND & user_filter, message_handle)
-    )
+    application.add_handler(MessageHandler(filters.TEXT & user_filter, message_handle))
 
     application.add_handler(
         MessageHandler(filters.VOICE & user_filter, voice_message_handle)
