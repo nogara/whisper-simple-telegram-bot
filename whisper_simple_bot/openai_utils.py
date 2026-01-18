@@ -14,8 +14,7 @@ def get_openai_client(use_custom_base=False):
     return OpenAI()
 
 
-async def transcribe_audio(audio_file, language="pt", model="whisper-1") -> str:
-
+async def transcribe_audio(audio_file, language=None, model="whisper-1") -> str:
     client = get_openai_client(use_custom_base=False)
 
     # check if the file is too large
@@ -25,9 +24,10 @@ async def transcribe_audio(audio_file, language="pt", model="whisper-1") -> str:
 
     # catch errors from the OpenAI API
     try:
-        transcription = client.audio.transcriptions.create(
-            model=model, language=language, file=audio_file
-        )
+        request_kwargs = {"model": model, "file": audio_file}
+        if language:
+            request_kwargs["language"] = language
+        transcription = client.audio.transcriptions.create(**request_kwargs)
         logger.info(f"Transcribed audio: {transcription.text}")
         print(transcription.text)
         return transcription.text or ""

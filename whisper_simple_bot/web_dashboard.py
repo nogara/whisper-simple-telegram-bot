@@ -41,7 +41,7 @@ def dashboard():
 
     # For settings, since chat_settings is in __main__, perhaps save to a file or something.
     # For now, placeholder.
-    settings = "Default: language=pt, model=whisper-1"
+    settings = "Default: language=auto, model=whisper-1"
 
     return render_template_string(HTML_TEMPLATE, logs=logs[-10000:], settings=settings)  # last 10k chars
 

@@ -79,7 +79,7 @@ HELP_MESSAGE = """Commands:
 ⚪ /help – Show help
 ⚪ /version – Show version
 ⚪ /show_settings – Show current settings
-⚪ /set_language &lt;lang&gt; – Set transcription language (e.g., pt, en)
+⚪ /set_language &lt;lang|auto&gt; – Force transcription language (e.g., pt, en)
 ⚪ /set_model &lt;model&gt; – Set Whisper model (e.g., whisper-1)
 ⚪ /set_gpt_model &lt;model&gt; – Set GPT model (e.g., gpt-3.5-turbo, gpt-4)
 ⚪ /set_max_tokens &lt;number&gt; – Set max tokens for GPT response (e.g., 1000)
@@ -140,13 +140,16 @@ async def voice_message_handle(update: Update, context: CallbackContext):
     settings = chat_settings.get(
         chat_id,
         {
-            "language": "pt",
+            "language": None,
             "model": "whisper-1",
             "gpt_model": "gpt-3.5-turbo",
             "max_tokens": 1000,
             "temperature": 0.7,
         },
     )
+
+    if settings.get("language") in ("", "auto"):
+        settings["language"] = None
 
     voice = update.message.voice
     voice_file = await context.bot.get_file(voice.file_id)
@@ -158,7 +161,9 @@ async def voice_message_handle(update: Update, context: CallbackContext):
     buf.seek(0)  # move cursor to the beginning of the buffer
 
     transcribed_text = await openai_utils.transcribe_audio(
-        buf, **{k: v for k, v in settings.items() if k in ["language", "model"]}
+        buf,
+        model=settings["model"],
+        language=settings.get("language"),
     )
     text = f"🎤: <i>{html.escape(transcribed_text)}</i>"
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
@@ -176,13 +181,16 @@ async def audio_handle(update: Update, context: CallbackContext):
     settings = chat_settings.get(
         chat_id,
         {
-            "language": "pt",
+            "language": None,
             "model": "whisper-1",
             "gpt_model": "gpt-3.5-turbo",
             "max_tokens": 1000,
             "temperature": 0.7,
         },
     )
+
+    if settings.get("language") in ("", "auto"):
+        settings["language"] = None
 
     audio = update.message.audio
     audio_file = await context.bot.get_file(audio.file_id)
@@ -194,7 +202,9 @@ async def audio_handle(update: Update, context: CallbackContext):
     buf.seek(0)  # move cursor to the beginning of the buffer
 
     transcribed_text = await openai_utils.transcribe_audio(
-        buf, **{k: v for k, v in settings.items() if k in ["language", "model"]}
+        buf,
+        model=settings["model"],
+        language=settings.get("language"),
     )
 
     if len(transcribed_text) < 4096:
@@ -228,13 +238,16 @@ async def video_handle(update: Update, context: CallbackContext):
     settings = chat_settings.get(
         chat_id,
         {
-            "language": "pt",
+            "language": None,
             "model": "whisper-1",
             "gpt_model": "gpt-3.5-turbo",
             "max_tokens": 1000,
             "temperature": 0.7,
         },
     )
+
+    if settings.get("language") in ("", "auto"):
+        settings["language"] = None
 
     video = update.message.video
     video_file = await context.bot.get_file(video.file_id)
@@ -259,7 +272,8 @@ async def video_handle(update: Update, context: CallbackContext):
 
         transcribed_text = await openai_utils.transcribe_audio(
             audio_buf,
-            **{k: v for k, v in settings.items() if k in ["language", "model"]},
+            model=settings["model"],
+            language=settings.get("language"),
         )
     except Exception as e:
         logging.error(f"Error extracting audio from video: {e}")
@@ -339,20 +353,25 @@ async def set_language_handle(update: Update, context: CallbackContext):
         return
     chat_id = update.effective_chat.id
     if context.args:
-        lang = context.args[0]
+        lang = context.args[0].strip()
         if chat_id not in chat_settings:
             chat_settings[chat_id] = {
-                "language": "pt",
+                "language": None,
                 "model": "whisper-1",
                 "gpt_model": "gpt-3.5-turbo",
                 "max_tokens": 1000,
                 "temperature": 0.7,
             }
-        chat_settings[chat_id]["language"] = lang
+        chat_settings[chat_id]["language"] = lang if lang.lower() != "auto" else None
         save_chat_settings()
-        await update.message.reply_text(f"Language set to {lang}")
+        if chat_settings[chat_id]["language"]:
+            await update.message.reply_text(
+                f"Transcription language forced to {chat_settings[chat_id]['language']}"
+            )
+        else:
+            await update.message.reply_text("Transcription language set to auto-detect")
     else:
-        await update.message.reply_text("Usage: /set_language <lang>")
+        await update.message.reply_text("Usage: /set_language <lang|auto>")
 
 
 async def set_model_handle(update: Update, context: CallbackContext):
@@ -363,7 +382,7 @@ async def set_model_handle(update: Update, context: CallbackContext):
         model = context.args[0]
         if chat_id not in chat_settings:
             chat_settings[chat_id] = {
-                "language": "pt",
+                "language": None,
                 "model": "whisper-1",
                 "gpt_model": "gpt-3.5-turbo",
                 "max_tokens": 1000,
@@ -384,7 +403,7 @@ async def set_gpt_model_handle(update: Update, context: CallbackContext):
         gpt_model = context.args[0]
         if chat_id not in chat_settings:
             chat_settings[chat_id] = {
-                "language": "pt",
+                "language": None,
                 "model": "whisper-1",
                 "gpt_model": "gpt-3.5-turbo",
                 "max_tokens": 1000,
@@ -406,7 +425,7 @@ async def set_max_tokens_handle(update: Update, context: CallbackContext):
             max_tokens = int(context.args[0])
             if chat_id not in chat_settings:
                 chat_settings[chat_id] = {
-                    "language": "pt",
+                    "language": None,
                     "model": "whisper-1",
                     "gpt_model": "gpt-3.5-turbo",
                     "max_tokens": 1000,
@@ -430,7 +449,7 @@ async def set_temperature_handle(update: Update, context: CallbackContext):
             temperature = float(context.args[0])
             if chat_id not in chat_settings:
                 chat_settings[chat_id] = {
-                    "language": "pt",
+                    "language": None,
                     "model": "whisper-1",
                     "gpt_model": "gpt-3.5-turbo",
                     "max_tokens": 1000,
@@ -454,7 +473,7 @@ async def show_settings_handle(update: Update, context: CallbackContext):
     settings = chat_settings.get(
         chat_id,
         {
-            "language": "pt",
+            "language": None,
             "model": "whisper-1",
             "gpt_model": "gpt-3.5-turbo",
             "max_tokens": 1000,
@@ -462,16 +481,17 @@ async def show_settings_handle(update: Update, context: CallbackContext):
         },
     )
 
+    language_display = settings["language"] or "auto"
     settings_text = f"""Current settings for this chat:
 
 🎙️ <b>Transcription Settings:</b>
-• Language: {html.escape(str(settings['language']))}
-• Whisper Model: {html.escape(str(settings['model']))}
+• Language: {html.escape(str(language_display))}
+• Whisper Model: {html.escape(str(settings["model"]))}
 
 🤖 <b>GPT Response Settings:</b>
-• GPT Model: {html.escape(str(settings['gpt_model']))}
-• Max Tokens: {html.escape(str(settings['max_tokens']))}
-• Temperature: {html.escape(str(settings['temperature']))}"""
+• GPT Model: {html.escape(str(settings["gpt_model"]))}
+• Max Tokens: {html.escape(str(settings["max_tokens"]))}
+• Temperature: {html.escape(str(settings["temperature"]))}"""
 
     await update.message.reply_text(settings_text, parse_mode=ParseMode.HTML)
 
@@ -482,7 +502,7 @@ async def post_init(application: Application):
             BotCommand("/help", "Show help message"),
             BotCommand("/version", "Show version information"),
             BotCommand("/show_settings", "Show current settings"),
-            BotCommand("/set_language", "Set transcription language"),
+            BotCommand("/set_language", "Force transcription language"),
             BotCommand("/set_model", "Set Whisper model"),
             BotCommand("/set_gpt_model", "Set GPT model"),
             BotCommand("/set_max_tokens", "Set max tokens for GPT"),
@@ -555,13 +575,16 @@ async def message_handle(update: Update, context: CallbackContext):
     settings = chat_settings.get(
         chat_id,
         {
-            "language": "pt",
+            "language": None,
             "model": "whisper-1",
             "gpt_model": "gpt-3.5-turbo",
             "max_tokens": 1000,
             "temperature": 0.7,
         },
     )
+
+    if settings.get("language") in ("", "auto"):
+        settings["language"] = None
 
     # Unified handling for replies to bot transcriptions and related commands
     replied = update.message.reply_to_message
@@ -595,7 +618,9 @@ async def message_handle(update: Update, context: CallbackContext):
 
         # Build the appropriate prompt based on the command
         if text.startswith("/summarize"):
-            user_prompt = f"Summarize the following text in the same language: {transcription}"
+            user_prompt = (
+                f"Summarize the following text in the same language: {transcription}"
+            )
         elif text.startswith("/bullets"):
             user_prompt = f"Create bullet points for the following text in the same language: {transcription}"
         elif text.startswith("/recipe"):
@@ -669,8 +694,10 @@ async def message_handle(update: Update, context: CallbackContext):
             audio_buf.seek(0)
             transcribed_text = await openai_utils.transcribe_audio(
                 audio_buf,
-                **{k: v for k, v in settings.items() if k in ["language", "model"]},
+                model=settings["model"],
+                language=settings.get("language"),
             )
+
             file_name = title or "video from URL"
             if len(transcribed_text) < 4096:
                 text_reply = f"<b>{html.escape(file_name)}</b> 🔗: <i>{html.escape(transcribed_text)}</i>"
