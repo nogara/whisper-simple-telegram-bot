@@ -88,6 +88,8 @@ HELP_MESSAGE = """Commands:
 ⚪ /bullets – Create bullet points for the replied transcription
 ⚪ /translate &lt;language&gt; – Translate the replied transcription to the specified language
 ⚪ /recipe – Create a recipe based on the replied transcription
+
+Tip: send a link followed by the word "receita" (or "recipe") to also get the post's caption/description together with the transcription.
 """
 
 
@@ -526,6 +528,26 @@ def is_url(text):
     return url_pattern.match(text.strip()) is not None
 
 
+# Words that, when sent next to a link, request recipe handling
+RECIPE_KEYWORDS = ("receita", "recipe")
+
+
+def parse_recipe_request(text):
+    """Extract the URL and a recipe flag from a message.
+
+    The message may be just a link, or a link followed (or preceded) by the
+    word ``receita`` / ``recipe`` to request recipe handling. Returns a
+    ``(url, is_recipe)`` tuple; ``url`` is ``None`` when no link is found.
+    """
+    if not text:
+        return None, False
+    match = re.search(r"https?://[^\s]+", text)
+    url = match.group(0) if match else None
+    remaining = text.replace(url, "", 1) if url else text
+    is_recipe = any(token.lower() in RECIPE_KEYWORDS for token in remaining.split())
+    return url, is_recipe
+
+
 async def download_audio_from_url(url):
     with tempfile.TemporaryDirectory() as temp_dir:
         ydl_opts = {
@@ -541,14 +563,18 @@ async def download_audio_from_url(url):
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            title = info.get("title", "video")
+            # The post's associated text (e.g. the Instagram caption, the
+            # tweet text, or the YouTube description). Used for recipes.
+            description = (info.get("description") or "").strip()
             # Find the mp3 file
             audio_files = glob.glob(os.path.join(temp_dir, "*.mp3"))
             if audio_files:
                 audio_file = audio_files[0]
                 with open(audio_file, "rb") as f:
                     audio_data = f.read()
-                return io.BytesIO(audio_data), info.get("title", "video")
-    return None, None
+                return io.BytesIO(audio_data), title, description
+    return None, None, None
 
 
 def extract_transcription_from_message(message_text):
@@ -683,12 +709,13 @@ async def message_handle(update: Update, context: CallbackContext):
             )
             return
 
-    if is_url(text):
+    url, is_recipe = parse_recipe_request(text)
+    if url:
         # treat as video URL
         await update.message.reply_text(
             "Downloading and transcribing video from URL... Please wait."
         )
-        audio_buf, title = await download_audio_from_url(text)
+        audio_buf, title, description = await download_audio_from_url(url)
         if audio_buf:
             audio_buf.name = "audio.mp3"
             audio_buf.seek(0)
@@ -699,6 +726,35 @@ async def message_handle(update: Update, context: CallbackContext):
             )
 
             file_name = title or "video from URL"
+
+            # For recipes, also include the post's associated text (caption /
+            # description), which often holds the recipe name, ingredients
+            # and/or preparation steps.
+            if is_recipe and description:
+                post_block = f"📝 <b>Post:</b>\n<i>{html.escape(description)}</i>\n\n"
+                full_reply = (
+                    f"🍳 <b>{html.escape(file_name)}</b>\n\n"
+                    f"{post_block}"
+                    f"🔗: <i>{html.escape(transcribed_text)}</i>"
+                )
+                if len(full_reply) < 4096:
+                    await update.message.reply_text(
+                        full_reply, parse_mode=ParseMode.HTML
+                    )
+                    return
+                for message_chunk in split_text_into_chunks(full_reply, 4096):
+                    try:
+                        await context.bot.send_message(
+                            update.effective_chat.id,
+                            message_chunk,
+                            parse_mode=ParseMode.HTML,
+                        )
+                    except telegram.error.BadRequest:
+                        await context.bot.send_message(
+                            update.effective_chat.id, message_chunk
+                        )
+                return
+
             if len(transcribed_text) < 4096:
                 text_reply = f"<b>{html.escape(file_name)}</b> 🔗: <i>{html.escape(transcribed_text)}</i>"
                 await update.message.reply_text(text_reply, parse_mode=ParseMode.HTML)
