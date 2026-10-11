@@ -199,7 +199,7 @@ name = "cffi"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pycparser" },
+    { name = "pycparser", marker = "implementation_name != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/eb/56/b1ba7935a17738ae8453301356628e8147c79dbb825bcbc73dc7401f9846/cffi-2.0.0.tar.gz", hash = "sha256:44d1b5909021139fe36001ae048dbdde8214afa20200eda0f64c068cac5d5529", size = 523588, upload-time = "2025-09-08T23:24:04.541Z" }
 wheels = [
@@ -720,12 +720,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/02/49/9d1284d0dc65e2c75
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e7/e7/80988e32bf6f73919a113473a604f5a8f09094de312b9d52b79c2df7612b/jupyter_core-5.9.1-py3-none-any.whl", hash = "sha256:ebf87fdc6073d142e114c72c9e29a9d7ca03fad818c5d300ce2adc1fb0743407", size = 29032, upload-time = "2025-10-16T19:19:16.783Z" },
 ]
-
-[[package]]
-name = "logging"
-version = "0.4.9.6"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/93/4b/979db9e44be09f71e85c9c8cfc42f258adfb7d93ce01deed2788b2948919/logging-0.4.9.6.tar.gz", hash = "sha256:26f6b50773f085042d301085bd1bf5d9f3735704db9f37c1ce6d8b85c38f2417", size = 96029, upload-time = "2013-06-04T23:43:22.086Z" }
 
 [[package]]
 name = "markupsafe"
@@ -1494,12 +1488,11 @@ wheels = [
 
 [[package]]
 name = "whisper-simple-bot"
-version = "1.6.1"
+version = "1.6.2"
 source = { editable = "." }
 dependencies = [
     { name = "deepgram-sdk" },
     { name = "flask" },
-    { name = "logging" },
     { name = "openai" },
     { name = "pydub" },
     { name = "python-dotenv" },
@@ -1519,7 +1512,6 @@ requires-dist = [
     { name = "flask", specifier = ">=3.0.3,<4.0.0" },
     { name = "hupper", marker = "extra == 'dev'", specifier = ">=1.12.1,<2.0.0" },
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.29.4,<7.0.0" },
-    { name = "logging", specifier = ">=0.4.9.6,<0.5.0" },
     { name = "openai", specifier = ">=1.16.2,<2.0.0" },
     { name = "pydub", specifier = ">=0.25.1,<0.26.0" },
     { name = "python-dotenv", specifier = ">=1.0.1,<2.0.0" },
