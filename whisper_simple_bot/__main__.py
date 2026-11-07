@@ -98,6 +98,74 @@ def split_text_into_chunks(text, chunk_size):
         yield text[i : i + chunk_size]
 
 
+TELEGRAM_MAX_MESSAGE_LENGTH = 4096
+MAX_LABEL_LENGTH = 200
+
+
+def utf16_len(text):
+    # Telegram measures message length in UTF-16 code units, so characters
+    # outside the BMP (most emoji) count as two.
+    return len(text.encode("utf-16-le")) // 2
+
+
+def split_text_by_budget(text, budget):
+    """Split text into chunks of at most `budget` UTF-16 units, preferring
+    to break on whitespace."""
+    chunks = []
+    while text:
+        size = 0
+        cut = 0
+        for ch in text:
+            ch_len = 2 if ord(ch) > 0xFFFF else 1
+            if size + ch_len > budget:
+                break
+            size += ch_len
+            cut += 1
+        if cut == len(text):
+            chunks.append(text)
+            break
+        space = text.rfind(" ", 0, cut)
+        if space > cut // 2:
+            cut = space + 1
+        chunks.append(text[:cut])
+        text = text[cut:]
+    return chunks
+
+
+async def send_transcription(update, context, emoji, transcribed_text, label=None):
+    """Send a transcription, splitting it across several messages when the
+    label + text would exceed Telegram's message length limit."""
+    if label and len(label) > MAX_LABEL_LENGTH:
+        label = label[: MAX_LABEL_LENGTH - 1] + "…"
+    label_html = f"<b>{html.escape(label)}</b> " if label else ""
+    label_plain = f"{label} " if label else ""
+
+    # Telegram counts length after HTML entity parsing, so the visible text
+    # (label + marker + transcription) is what must fit. Reserve room for the
+    # "(NN/NN) " part marker plus a small safety margin.
+    overhead = utf16_len(f"{label_plain}(99/99) {emoji}: ") + 16
+    chunks = split_text_by_budget(
+        transcribed_text, TELEGRAM_MAX_MESSAGE_LENGTH - overhead
+    ) or [""]
+
+    total = len(chunks)
+    for i, chunk in enumerate(chunks, start=1):
+        part = f"({i}/{total}) " if total > 1 else ""
+        text_html = f"{label_html}{part}{emoji}: <i>{html.escape(chunk)}</i>"
+        try:
+            if i == 1:
+                await update.message.reply_text(text_html, parse_mode=ParseMode.HTML)
+            else:
+                await context.bot.send_message(
+                    update.effective_chat.id, text_html, parse_mode=ParseMode.HTML
+                )
+        except telegram.error.BadRequest as e:
+            logger.warning(f"Failed to send HTML transcription chunk: {e}")
+            await context.bot.send_message(
+                update.effective_chat.id, f"{label_plain}{part}{emoji}: {chunk}"
+            )
+
+
 def get_version_string():
     # get version from version file
     version = "unknown"
@@ -167,8 +235,7 @@ async def voice_message_handle(update: Update, context: CallbackContext):
         model=settings["model"],
         language=settings.get("language"),
     )
-    text = f"🎤: <i>{html.escape(transcribed_text)}</i>"
-    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+    await send_transcription(update, context, "🎤", transcribed_text)
 
 
 async def audio_handle(update: Update, context: CallbackContext):
@@ -209,23 +276,9 @@ async def audio_handle(update: Update, context: CallbackContext):
         language=settings.get("language"),
     )
 
-    if len(transcribed_text) < 4096:
-        text = f"<b>{html.escape(audio.file_name)}</b> 🔊: <i>{html.escape(transcribed_text)}</i>"
-        await update.message.reply_text(text, parse_mode=ParseMode.HTML)
-        return
-
-    # split text into multiple messages due to 4096 character limit
-    i = 0
-    for message_chunk in split_text_into_chunks(transcribed_text, 4096):
-        try:
-            i = i + 1
-            text = f"<b>{html.escape(audio.file_name)}</b> 🔊 ({i}): <i>{html.escape(message_chunk)}</i>"
-            await context.bot.send_message(
-                update.effective_chat.id, text, parse_mode=ParseMode.HTML
-            )
-        except telegram.error.BadRequest:
-            # answer has invalid characters, so we send it without parse_mode
-            await context.bot.send_message(update.effective_chat.id, message_chunk)
+    await send_transcription(
+        update, context, "🔊", transcribed_text, label=audio.file_name
+    )
 
 
 async def video_handle(update: Update, context: CallbackContext):
@@ -284,23 +337,7 @@ async def video_handle(update: Update, context: CallbackContext):
 
     file_name = video.file_name or "video"
 
-    if len(transcribed_text) < 4096:
-        text = f"<b>{html.escape(file_name)}</b> 🎥: <i>{html.escape(transcribed_text)}</i>"
-        await update.message.reply_text(text, parse_mode=ParseMode.HTML)
-        return
-
-    # split text into multiple messages due to 4096 character limit
-    i = 0
-    for message_chunk in split_text_into_chunks(transcribed_text, 4096):
-        try:
-            i = i + 1
-            text = f"<b>{html.escape(file_name)}</b> 🎥 ({i}): <i>{html.escape(message_chunk)}</i>"
-            await context.bot.send_message(
-                update.effective_chat.id, text, parse_mode=ParseMode.HTML
-            )
-        except telegram.error.BadRequest:
-            # answer has invalid characters, so we send it without parse_mode
-            await context.bot.send_message(update.effective_chat.id, message_chunk)
+    await send_transcription(update, context, "🎥", transcribed_text, label=file_name)
 
 
 async def error_handle(update: Update, context: CallbackContext) -> None:
@@ -755,23 +792,9 @@ async def message_handle(update: Update, context: CallbackContext):
                         )
                 return
 
-            if len(transcribed_text) < 4096:
-                text_reply = f"<b>{html.escape(file_name)}</b> 🔗: <i>{html.escape(transcribed_text)}</i>"
-                await update.message.reply_text(text_reply, parse_mode=ParseMode.HTML)
-                return
-            # split text
-            i = 0
-            for message_chunk in split_text_into_chunks(transcribed_text, 4096):
-                try:
-                    i = i + 1
-                    text_reply = f"<b>{html.escape(file_name)}</b> 🔗 ({i}): <i>{html.escape(message_chunk)}</i>"
-                    await context.bot.send_message(
-                        update.effective_chat.id, text_reply, parse_mode=ParseMode.HTML
-                    )
-                except telegram.error.BadRequest:
-                    await context.bot.send_message(
-                        update.effective_chat.id, message_chunk
-                    )
+            await send_transcription(
+                update, context, "🔗", transcribed_text, label=file_name
+            )
         else:
             await update.message.reply_text(
                 "Failed to download or extract audio from URL."
